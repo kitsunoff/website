@@ -86,9 +86,10 @@ application CR. Those manual edits are **not** overwritten when the parent
 
 The workflow has two steps:
 
-1. Turn on the flag on the tenant (checkbox in the Dashboard or `etcd: true` /
-   `seaweedfs: true` / ... in the HelmRelease YAML). Cozystack creates the
-   matching application CR with defaults.
+1. Turn on the flag on the tenant (checkbox in the Dashboard, or `etcd: true` /
+   `seaweedfs: true` / ... under `spec.values` in the Tenant `HelmRelease`
+   manifest you apply with `kubectl`). Cozystack creates the matching
+   application CR with defaults.
 2. Edit the application CR in place. For example, to add a pool to the
    tenant-root SeaweedFS instance:
 
