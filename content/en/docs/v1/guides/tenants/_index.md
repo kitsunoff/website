@@ -98,6 +98,62 @@ For example:
 -   However, a tenant cannot be named `foo-bar`, because parsing names like `tenant-foo-bar` can be ambiguous.
 
 
+### Tenant Namespace Layout
+
+Each tenant corresponds to a Kubernetes workload namespace whose name encodes
+the tenant's position in the hierarchy. The root tenant is always
+`tenant-root`, and nested tenants follow two rules:
+
+-   Tenants created directly inside `tenant-root` get a **flat** namespace of
+    the form `tenant-<name>`. There is no `tenant-root-` prefix.
+-   Tenants created at any deeper level get a **hierarchical** namespace of
+    the form `<parent-workload-namespace>-<name>`.
+
+For example, starting from `tenant-root`:
+
+| Tenant path             | Workload namespace         |
+| ---                     | ---                        |
+| `root`                  | `tenant-root`              |
+| `root/alpha`            | `tenant-alpha`             |
+| `root/alpha/beta`       | `tenant-alpha-beta`        |
+| `root/alpha/beta/gamma` | `tenant-alpha-beta-gamma`  |
+
+This layout is produced by both the `tenant` Helm chart
+([`packages/apps/tenant/templates/_helpers.tpl`](https://github.com/cozystack/cozystack/blob/main/packages/apps/tenant/templates/_helpers.tpl))
+and the aggregated API
+([`pkg/registry/apps/application/rest.go::computeTenantNamespace`](https://github.com/cozystack/cozystack/blob/main/pkg/registry/apps/application/rest.go)).
+Because tenant names themselves are constrained to be alphanumeric (see
+*Tenant Naming Limitations* above), namespace fragments never contain
+tenant-internal dashes.
+
+
+### Deriving Parent and Child Relationships
+
+Downstream integrations — custom dashboards, audit tooling, cost-allocation
+jobs, policy engines — sometimes need to walk the tenant tree to render
+breadcrumbs, compute inherited settings, or scope queries. It is **not
+reliable** to do this by string-parsing the workload namespace name: the
+root-level case (`tenant-alpha`) is flat while deeper levels
+(`tenant-alpha-beta`) are hierarchical, so a single `strings.Split` rule is
+wrong for one of the two cases.
+
+Use the `Tenant` custom resource itself instead. Cozystack stores every
+`Tenant` CR in its parent's workload namespace, so:
+
+-   **`metadata.namespace`** of a `Tenant` CR equals the **parent's** workload
+    namespace. This is the reliable pointer to the parent — no string parsing
+    required.
+-   **`status.namespace`** of a `Tenant` CR equals the tenant's **own** workload
+    namespace (the one where the tenant's applications, nested tenants, and
+    `HelmRelease`s live).
+-   To list the direct children of a tenant with workload namespace `N`, list
+    `Tenant` CRs whose `metadata.namespace == N`.
+
+This approach is stable regardless of whether the tenant is a direct child of
+`tenant-root` or a deeper descendant, and it survives any future adjustments
+to the namespace layout because it does not depend on the layout at all.
+
+
 ### Reference
 
 See the reference for the application implementing tenant management: [`tenant`]({{% ref "/docs/v1/applications/tenant#parameters" %}})
