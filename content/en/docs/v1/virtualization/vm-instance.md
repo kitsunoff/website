@@ -186,7 +186,7 @@ Specific characteristics of this series are:
 ## Development
 
 To get started with customizing or creating your own instancetypes and preferences
-see [Developer Guide](/docs/v1/development/).
+see [Developer Guide]({{% ref "/docs/v1/development" %}}).
 
 ## Resources
 
